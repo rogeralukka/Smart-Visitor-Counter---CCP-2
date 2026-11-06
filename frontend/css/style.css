@@ -1,0 +1,352 @@
+/* ==========================================================================
+   Smart Visitor Counter - Zero-Scroll Minimalist Obsidian & Emerald Theme
+   - 100vh zero-scroll desktop fit
+   - Dynamic PCB palette (flawless in BOTH Dark & Light modes)
+   - Zero emojis, 2D monochrome minimalist icons
+   - Pure Emerald (#10b981), Amber (#f59e0b), and Crimson (#ef4444) (Zero Blue)
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+:root, [data-theme="dark"] {
+  --paper: #0c0e11;
+  --card: #14171d;
+  --card-inner: #1a1e26;
+  --ink: #f1f3f5;
+  --text-muted: #9ba3af;
+  --border: #262c37;
+  --border-focus: #10b981;
+  
+  --accent-emerald: #10b981;
+  --accent-emerald-light: #34d399;
+  --accent-amber: #f59e0b;
+  --accent-red: #ef4444;
+  
+  --grid-dots: rgba(241, 243, 245, 0.06);
+  --shadow-card: 0 4px 18px rgba(0, 0, 0, 0.45);
+  --counter-glow: 0 0 25px rgba(16, 185, 129, 0.25);
+  
+  /* Dynamic Schematic PCB Theme Colors (Dark) */
+  --pcb-bg: #11141a;
+  --pcb-module-bg: #161920;
+  --pcb-mcu-bg: #0d1015;
+  --pcb-text-primary: #e9ebee;
+  --pcb-text-secondary: #9ba3af;
+  --pcb-text-dim: #64748b;
+  --pcb-trace: #262c37;
+  --pcb-dots: rgba(241, 243, 245, 0.07);
+
+  --font-display: 'Space Grotesk', -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+[data-theme="light"] {
+  --paper: #f8f6f0;
+  --card: #ffffff;
+  --card-inner: #f1ede5;
+  --ink: #191c21;
+  --text-muted: #626a78;
+  --border: #ded9cf;
+  --border-focus: #059669;
+  
+  --accent-emerald: #059669;
+  --accent-emerald-light: #10b981;
+  --accent-amber: #d97706;
+  --accent-red: #dc2626;
+  
+  --grid-dots: rgba(25, 28, 33, 0.08);
+  --shadow-card: 0 4px 15px rgba(0, 0, 0, 0.06);
+  --counter-glow: 0 0 20px rgba(5, 150, 105, 0.15);
+  
+  /* Dynamic Schematic PCB Theme Colors (Light) */
+  --pcb-bg: #ece7de;
+  --pcb-module-bg: #e2ded4;
+  --pcb-mcu-bg: #2d333f;
+  --pcb-text-primary: #191c21;
+  --pcb-text-secondary: #4b5563;
+  --pcb-text-dim: #6b7280;
+  --pcb-trace: #c5bfb4;
+  --pcb-dots: rgba(25, 28, 33, 0.09);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100vh;
+  overflow: hidden; /* Zero-scroll layout */
+}
+
+body {
+  font-family: var(--font-display);
+  background-color: var(--paper);
+  background-image: radial-gradient(var(--grid-dots) 1px, transparent 1px);
+  background-size: 20px 20px;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Minimalist Top Nav Header */
+.app-header {
+  background: var(--card);
+  border-bottom: 1.5px solid var(--border);
+  padding: 0.5rem 1.25rem;
+  flex-shrink: 0;
+  height: 48px;
+  display: flex;
+  align-items: center;
+}
+
+.header-inner {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* 2D Monochrome Minimalist Nav Icon Buttons */
+.btn-mono-nav {
+  background: var(--card-inner);
+  border: 1.5px solid var(--border);
+  color: var(--ink);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.btn-mono-nav:hover {
+  border-color: var(--border-focus);
+  color: var(--accent-emerald);
+}
+
+.btn-mono-nav:active {
+  transform: scale(0.95);
+}
+
+.btn-mono-nav svg {
+  display: block;
+}
+
+/* Main Viewport Container (100% of remaining height) */
+.main-viewport {
+  flex: 1;
+  min-height: 0;
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* Top Row: ~56% of viewport */
+.row-top {
+  flex: 1.25;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 0.85rem;
+}
+
+/* Bottom Row: ~44% of viewport */
+.row-bottom {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 0.85rem;
+}
+
+/* Card */
+.workbench-card {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.card-title-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.card-title-bar h2 {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Circuit Schematic Wrapper */
+.schematic-wrapper {
+  background: var(--pcb-bg);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  transition: background-color 0.2s ease;
+}
+
+.schematic-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Digital Counter Card Layout */
+.counter-card-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 0.6rem;
+}
+
+.counter-hero-box {
+  background: var(--card-inner);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 1.1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.counter-title-label {
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.counter-value-display {
+  font-family: var(--font-mono);
+  font-size: 4.8rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent-emerald);
+  text-shadow: var(--counter-glow);
+  transition: transform 0.12s ease;
+  letter-spacing: -1px;
+}
+
+.counter-value-display.pulse {
+  transform: scale(1.06);
+}
+
+/* Submetrics Matrix */
+.stats-matrix {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.stat-cell {
+  background: var(--card-inner);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.55rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.stat-cell-title {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+}
+
+.stat-cell-val {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* Chart Box */
+.chart-box {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  width: 100%;
+}
+
+/* Log Table Box */
+.log-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+table.log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  text-align: left;
+}
+
+table.log-table th {
+  position: sticky;
+  top: 0;
+  background: var(--card-inner);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  padding: 0.35rem 0.55rem;
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+}
+
+table.log-table td {
+  padding: 0.4rem 0.55rem;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+}
+
+.badge-visitor-num {
+  font-weight: 700;
+  color: var(--accent-emerald);
+}

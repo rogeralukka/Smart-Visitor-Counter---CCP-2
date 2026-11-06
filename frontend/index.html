@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Visitor Counter</title>
+  
+  <!-- Space Grotesk & IBM Plex Mono Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  
+  <link rel="stylesheet" href="/css/style.css?v=5.0">
+</head>
+<body>
+
+  <!-- Minimal Application Header with 2D Monochrome Icons -->
+  <header class="app-header">
+    <div class="header-inner">
+      <h1 class="header-title">Smart Visitor Counter</h1>
+      <div class="header-controls">
+        <!-- 2D Minimalist Reset Button -->
+        <button id="nav-reset-btn" class="btn-mono-nav" title="Reset Counter" aria-label="Reset Counter">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+          </svg>
+        </button>
+
+        <!-- 2D Minimalist Theme Toggle Button -->
+        <button id="theme-toggle-btn" class="btn-mono-nav" title="Toggle Theme" aria-label="Toggle Theme">
+          <svg id="theme-icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          <svg id="theme-icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 100vh Zero-Scroll Main Viewport -->
+  <main class="main-viewport">
+
+    <!-- Row 1: Interactive Circuit Workbench & Digital Counter -->
+    <div class="row-top">
+
+      <!-- LEFT: Circuit Workbench with Integrated Round Button -->
+      <section class="workbench-card">
+        <div class="card-title-bar">
+          <h2>ESP32 Edge Perception Node</h2>
+        </div>
+
+        <div class="schematic-wrapper">
+          <div id="circuit-schematic-mount" style="width: 100%; height: 100%;"></div>
+        </div>
+      </section>
+
+      <!-- RIGHT: Live Footfall Telemetry HUD -->
+      <section class="workbench-card">
+        <div class="card-title-bar">
+          <h2>Live Footfall Telemetry</h2>
+        </div>
+
+        <div class="counter-card-body">
+          <!-- Counter Hero Box -->
+          <div class="counter-hero-box">
+            <div class="counter-title-label">Total Campus Visitors Counted</div>
+            <div id="digital-counter" class="counter-value-display">0</div>
+          </div>
+
+          <!-- Stats Matrix -->
+          <div class="stats-matrix">
+            <div class="stat-cell">
+              <span class="stat-cell-title">Today's Footfall</span>
+              <span id="today-visitors" class="stat-cell-val">0</span>
+            </div>
+            <div class="stat-cell">
+              <span class="stat-cell-title">Hourly Rate</span>
+              <span id="current-rate" class="stat-cell-val">0 / hr</span>
+            </div>
+            <div class="stat-cell">
+              <span class="stat-cell-title">Peak Hour</span>
+              <span id="peak-hour-stat" class="stat-cell-val">--</span>
+            </div>
+            <div class="stat-cell">
+              <span class="stat-cell-title">Last Entry (UTC)</span>
+              <span id="last-entry-time" class="stat-cell-val" style="font-size: 0.95rem;">--:--:--</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Row 2: 24-Hour Histogram & Event Log Stream -->
+    <div class="row-bottom">
+
+      <!-- 24-Hour Footfall Histogram Chart -->
+      <section class="workbench-card">
+        <div class="card-title-bar">
+          <h2>24-Hour Footfall Distribution</h2>
+        </div>
+        <div class="chart-box">
+          <canvas id="visitorHourlyChart"></canvas>
+        </div>
+      </section>
+
+      <!-- Real-Time Audit Stream Table -->
+      <section class="workbench-card">
+        <div class="card-title-bar">
+          <h2>Real-Time Visitor Audit Stream</h2>
+        </div>
+
+        <div class="log-table-wrap">
+          <table class="log-table">
+            <thead>
+              <tr>
+                <th>Visitor #</th>
+                <th>Time (UTC)</th>
+                <th>Device ID</th>
+                <th>Verification</th>
+              </tr>
+            </thead>
+            <tbody id="log-table-tbody">
+              <!-- Populated dynamically via app.js -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="/js/circuit.js?v=5.0"></script>
+  <script src="/js/app.js?v=5.0"></script>
+</body>
+</html>
