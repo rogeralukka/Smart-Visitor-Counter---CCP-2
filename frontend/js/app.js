@@ -1,9 +1,14 @@
 /**
  * Smart Visitor Counter - Frontend Client Logic
  * Minimalist 2D monochrome controls, dynamic theme adaptation, SSE real-time stream
+ * Supports BOTH Localhost FastAPI server AND 100% Serverless AWS Cloud hosting (S3 + Lambda Function URL)
  */
 
 let visitorChart = null;
+
+// Determine environment: Localhost vs AWS S3 Static Website
+const IS_LOCAL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const LAMBDA_ENDPOINT = 'https://twhjx4fahvna4mpy5aeahvz4nm0mpgsr.lambda-url.us-east-1.on.aws/';
 
 // Natural number formatting (0, 1, 2, 14, 1,250)
 function formatCounter(num) {
@@ -96,14 +101,27 @@ async function pressPhysicalButton(delta = 1) {
   }
 
   try {
-    const res = await fetch('/api/button/press', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ count_delta: delta })
-    });
-    const data = await res.json();
-    if (data.body && data.body.current_state) {
-      updateDashboardState(data.body.current_state);
+    if (IS_LOCAL) {
+      const res = await fetch('/api/button/press', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count_delta: delta })
+      });
+      const data = await res.json();
+      if (data.body && data.body.current_state) {
+        updateDashboardState(data.body.current_state);
+      }
+    } else {
+      // Direct AWS Lambda Function URL invocation from S3
+      const res = await fetch(LAMBDA_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count_delta: delta })
+      });
+      const data = await res.json();
+      if (data.current_state) {
+        updateDashboardState(data.current_state);
+      }
     }
   } catch (err) {
     console.error('Failed to dispatch button press:', err);
@@ -114,13 +132,35 @@ async function pressPhysicalButton(delta = 1) {
 async function resetCounter() {
   if (!confirm('Reset visitor counter?')) return;
   try {
-    const res = await fetch('/api/visitor/reset', { method: 'POST' });
-    const data = await res.json();
-    if (data.state) {
-      updateDashboardState(data.state);
+    if (IS_LOCAL) {
+      const res = await fetch('/api/visitor/reset', { method: 'POST' });
+      const data = await res.json();
+      if (data.state) {
+        updateDashboardState(data.state);
+      }
+    } else {
+      const res = await fetch(LAMBDA_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset' })
+      });
+      const state = await fetchCloudState();
+      if (state) updateDashboardState(state);
     }
   } catch (err) {
     console.error('Reset failed:', err);
+  }
+}
+
+// Fetch cloud state
+async function fetchCloudState() {
+  try {
+    const url = IS_LOCAL ? '/api/visitor/state' : LAMBDA_ENDPOINT;
+    const res = await fetch(url);
+    return await res.json();
+  } catch (e) {
+    console.error('Failed fetching state:', e);
+    return null;
   }
 }
 
@@ -182,31 +222,39 @@ function updateThemeToggleIcon(theme) {
   }
 }
 
-// Server-Sent Events setup
-function connectSSE() {
-  const eventSource = new EventSource('/api/stream');
+// Server-Sent Events setup (Localhost) & Cloud Polling (S3)
+function initLiveSync() {
+  if (IS_LOCAL) {
+    const eventSource = new EventSource('/api/stream');
 
-  eventSource.addEventListener('init', (e) => {
-    try {
-      const payload = JSON.parse(e.data);
-      if (payload.state) updateDashboardState(payload.state);
-    } catch (err) {}
-  });
+    eventSource.addEventListener('init', (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (payload.state) updateDashboardState(payload.state);
+      } catch (err) {}
+    });
 
-  eventSource.addEventListener('visitor_counted', (e) => {
-    try {
-      const payload = JSON.parse(e.data);
-      if (payload.current_state) updateDashboardState(payload.current_state);
-      if (window.pulseCircuit) window.pulseCircuit();
-    } catch (err) {}
-  });
+    eventSource.addEventListener('visitor_counted', (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (payload.current_state) updateDashboardState(payload.current_state);
+        if (window.pulseCircuit) window.pulseCircuit();
+      } catch (err) {}
+    });
 
-  eventSource.addEventListener('visitor_reset', (e) => {
-    try {
-      const payload = JSON.parse(e.data);
-      updateDashboardState(payload);
-    } catch (err) {}
-  });
+    eventSource.addEventListener('visitor_reset', (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        updateDashboardState(payload);
+      } catch (err) {}
+    });
+  } else {
+    // S3 Cloud Hosting: Poll Lambda URL every 3.5s for real-time multiplayer updates
+    setInterval(async () => {
+      const state = await fetchCloudState();
+      if (state) updateDashboardState(state);
+    }, 3500);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -217,15 +265,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   initChart();
 
   // Load initial state
-  try {
-    const res = await fetch('/api/visitor/state');
-    const state = await res.json();
-    updateDashboardState(state);
-  } catch (e) {
-    console.error('Failed to load initial state:', e);
+  const initialState = await fetchCloudState();
+  if (initialState) {
+    updateDashboardState(initialState);
   }
 
-  connectSSE();
+  initLiveSync();
 
   // Top Nav Reset Button
   const navResetBtn = document.getElementById('nav-reset-btn');
@@ -244,21 +289,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Theme Toggle Button
   const themeBtn = document.getElementById('theme-toggle-btn');
   if (themeBtn) {
+    const savedTheme = localStorage.getItem('svc-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeToggleIcon(savedTheme);
+
     themeBtn.addEventListener('click', () => {
       const current = document.documentElement.getAttribute('data-theme') || 'dark';
-      const target = current === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', target);
-      updateThemeToggleIcon(target);
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('svc-theme', next);
+      updateThemeToggleIcon(next);
+
+      if (window.renderCircuitSchematic) {
+        window.renderCircuitSchematic('circuit-schematic-mount');
+      }
+
       if (visitorChart) {
-        visitorChart.destroy();
-        initChart();
-        fetch('/api/visitor/state').then(r => r.json()).then(updateDashboardState);
+        const gridColor = next === 'light' ? 'rgba(0, 0, 0, 0.06)' : 'rgba(241, 243, 245, 0.06)';
+        const textColor = next === 'light' ? '#626a78' : '#9ba3af';
+        visitorChart.options.scales.x.grid.color = gridColor;
+        visitorChart.options.scales.x.ticks.color = textColor;
+        visitorChart.options.scales.y.grid.color = gridColor;
+        visitorChart.options.scales.y.ticks.color = textColor;
+        visitorChart.update();
       }
     });
   }
-
-  updateThemeToggleIcon(document.documentElement.getAttribute('data-theme') || 'dark');
 });
-
-window.pressPhysicalButton = pressPhysicalButton;
-window.resetCounter = resetCounter;
