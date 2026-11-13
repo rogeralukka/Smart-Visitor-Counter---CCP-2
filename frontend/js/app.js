@@ -94,34 +94,40 @@ function updateRecentEventsTable(events) {
   });
 }
 
-// Button press action
+// Button press action with Instant Optimistic UI Update
 async function pressPhysicalButton(delta = 1) {
+  // 1. Physical animation of 3D plunger and circuit traces
   if (window.pulseCircuit) {
     window.pulseCircuit();
   }
 
+  // 2. Instant Zero-Latency Optimistic UI Increment
+  const counterEl = document.getElementById('digital-counter');
+  const todayEl = document.getElementById('today-visitors');
+  if (counterEl) {
+    const currentTotal = parseInt(counterEl.textContent.replace(/,/g, ''), 10) || 0;
+    const newTotal = currentTotal + delta;
+    counterEl.textContent = formatCounter(newTotal);
+    counterEl.classList.add('pulse');
+    setTimeout(() => counterEl.classList.remove('pulse'), 120);
+  }
+  if (todayEl) {
+    const currentToday = parseInt(todayEl.textContent.replace(/,/g, ''), 10) || 0;
+    todayEl.textContent = formatCounter(currentToday + delta);
+  }
+
+  // 3. Dispatch to Cloud Backend (FastAPI on localhost or AWS Lambda on S3)
   try {
-    if (IS_LOCAL) {
-      const res = await fetch('/api/button/press', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ count_delta: delta })
-      });
-      const data = await res.json();
-      if (data.body && data.body.current_state) {
-        updateDashboardState(data.body.current_state);
-      }
-    } else {
-      // Direct AWS Lambda Function URL invocation from S3
-      const res = await fetch(LAMBDA_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ count_delta: delta })
-      });
-      const data = await res.json();
-      if (data.current_state) {
-        updateDashboardState(data.current_state);
-      }
+    const url = IS_LOCAL ? '/api/button/press' : LAMBDA_ENDPOINT;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ count_delta: delta })
+    });
+    const data = await res.json();
+    const newState = data.current_state || (data.body && data.body.current_state) || data.state;
+    if (newState) {
+      updateDashboardState(newState);
     }
   } catch (err) {
     console.error('Failed to dispatch button press:', err);
@@ -131,6 +137,13 @@ async function pressPhysicalButton(delta = 1) {
 // Reset counter
 async function resetCounter() {
   if (!confirm('Reset visitor counter?')) return;
+
+  // Immediate local clear
+  const counterEl = document.getElementById('digital-counter');
+  const todayEl = document.getElementById('today-visitors');
+  if (counterEl) counterEl.textContent = '0';
+  if (todayEl) todayEl.textContent = '0';
+
   try {
     if (IS_LOCAL) {
       const res = await fetch('/api/visitor/reset', { method: 'POST' });
@@ -157,7 +170,8 @@ async function fetchCloudState() {
   try {
     const url = IS_LOCAL ? '/api/visitor/state' : LAMBDA_ENDPOINT;
     const res = await fetch(url);
-    return await res.json();
+    const data = await res.json();
+    return data.current_state || data.state || data;
   } catch (e) {
     console.error('Failed fetching state:', e);
     return null;
@@ -256,6 +270,12 @@ function initLiveSync() {
     }, 3500);
   }
 }
+
+// Export functions to global window scope so SVG and inline handlers can access them
+window.pressPhysicalButton = pressPhysicalButton;
+window.resetCounter = resetCounter;
+window.fetchCloudState = fetchCloudState;
+window.updateDashboardState = updateDashboardState;
 
 document.addEventListener('DOMContentLoaded', async () => {
   if (window.renderCircuitSchematic) {

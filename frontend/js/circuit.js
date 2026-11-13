@@ -189,13 +189,40 @@ function renderCircuitSchematic(containerId) {
   `;
 
   // Attach click listener to the integrated Round Button inside the SVG
+  let lastPressTime = 0;
+  const triggerPress = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const now = Date.now();
+    if (now - lastPressTime < 60) return; // 60ms software debounce
+    lastPressTime = now;
+
+    if (window.pressPhysicalButton) {
+      window.pressPhysicalButton(1);
+    }
+  };
+
   const roundBtnTarget = document.getElementById('svg-round-button-target');
   if (roundBtnTarget) {
-    roundBtnTarget.addEventListener('click', () => {
-      if (window.pressPhysicalButton) {
-        window.pressPhysicalButton(1);
-      }
-    });
+    roundBtnTarget.style.cursor = 'pointer';
+    roundBtnTarget.addEventListener('click', triggerPress);
+    roundBtnTarget.addEventListener('pointerdown', triggerPress);
+  }
+
+  const btnGroup = document.getElementById('svg-btn-group');
+  if (btnGroup) {
+    btnGroup.style.cursor = 'pointer';
+    btnGroup.addEventListener('click', triggerPress);
+    btnGroup.addEventListener('pointerdown', triggerPress);
+  }
+
+  const wholeBtnModule = document.getElementById('schematic-pushbutton');
+  if (wholeBtnModule) {
+    wholeBtnModule.style.cursor = 'pointer';
+    wholeBtnModule.addEventListener('click', triggerPress);
+    wholeBtnModule.addEventListener('pointerdown', triggerPress);
   }
 }
 
